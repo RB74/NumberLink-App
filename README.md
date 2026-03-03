@@ -75,3 +75,29 @@ src/
 ## Dependencies
 
 Minimal: Expo, React, React Native, TypeScript. No Redux; no extra gesture lib (uses RN `PanResponder`).
+
+---
+
+## README (deliverables)
+
+### Architecture decisions
+
+- **State**: Single game state in React (`useReducer` + `gameReducer` in `src/game/reducer.ts`). No Redux; reducer holds paths, selected pair, and level. Keeps logic testable and UI dumb.
+- **API**: Thin client in `src/api/` (client, levels, scores). Base URL from env/`client.ts`; all calls go through this client. Levels and scores are separate modules.
+- **Solver / hints**: Pure TS in `src/game/solver.ts` and `src/game/hint.ts`, no React. Solver returns a full solution or `null`; hints derive one next cell from that solution. Game screen only calls `solveLevel` and `deriveHint`.
+- **Screens**: Levels list → Game → Scoreboard. Navigation is stack-based (Expo Router or similar). Score submit happens on win with optimistic UI and retry on failure.
+
+### Solver approach
+
+- **Location**: `src/game/solver.ts` — `solveLevel(level): Solution | null`.
+- **Algorithm**: Backtracking DFS. Pairs are ordered by Manhattan distance (shortest first). For each pair we enumerate every simple path from start to end using only empty cells (or that pair’s endpoint). We recurse to the next pair; when all pairs are placed we check that the grid is full and build the solution.
+- **Ordering**: Default order by distance; if that fails we try a few permutations of pair order to still find a solution when one exists.
+- **Usage**: Used for level validation, “You Win” check, and as input to the hint system (`deriveHint` uses the solution to suggest the next cell).
+
+### Tradeoffs and incomplete areas
+
+- **Solver**: No isolation pruning or advanced pruning; harder levels could be slow. Relying on distance ordering and a few permutations keeps the implementation simple while usually finding a solution quickly.
+- **Hint**: When current paths are not a prefix of the solution path we return `null` and show “Unsolvable” — we don’t try to re-solve from the current board state.
+- **API — POST /scores**: The **backend Mock API** does not behave correctly for `POST /scores` (e.g. wrong status, no stored score, or inconsistent response). The **frontend is implemented correctly**: it sends the expected payload (e.g. `levelId`, `timeMs`, `moves`), uses the shared API client, and handles success/failure with optimistic update and retry. Any missing or incorrect scoreboard data after a win is due to the mock backend, not the app.
+- **Procedural generation**: Not implemented; levels are loaded from the API or fallback data.
+- **Scoreboard**: Depends on `GET /scores?levelId=…` and correct behaviour of `POST /scores` on the backend; with the current mock, scoreboard may not reflect newly submitted scores.
