@@ -37,9 +37,6 @@ docker compose up -d
 
 API base URL: `http://localhost:4010` (configurable in `src/api/client.ts`).
 
-- **Android emulator**: use `http://10.0.2.2:4010` (or set in `client.ts`).
-- **Physical device**: use your machine’s LAN IP and ensure port 4010 is reachable.
-
 ## Solver (brief)
 
 - **Location**: `src/game/solver.ts` — pure `solveLevel(level): Solution | null`.
